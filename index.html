@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Futsal Pendidikan Khas Muar</title>
-    <!-- Library untuk Jana PDF di Dashboard -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
         .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -16,16 +13,13 @@
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 15px; }
         .card { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 10px; text-align: left; }
         .kumpulan-title { font-weight: bold; color: #d93025; border-bottom: 2px solid #eee; margin-bottom: 10px; padding-bottom: 5px; }
-        .sekolah-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f9f9f9; }
+        .sekolah-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f9f9f9; cursor: pointer; transition: 0.2s; }
+        .sekolah-row:hover { background-color: #f1f8ff; }
         
-        .action-group { display: flex; align-items: center; gap: 8px; }
-        .status { font-size: 12px; padding: 6px 10px; border-radius: 5px; font-weight: bold; cursor: pointer; text-align: center; min-width: 80px;}
+        .status { font-size: 12px; padding: 6px 10px; border-radius: 5px; font-weight: bold; text-align: center; min-width: 80px;}
         .belum { background: #feefc3; color: #b06000; }
-        .selesai { background: #ceead6; color: #0d652d; cursor: default; }
+        .selesai { background: #ceead6; color: #0d652d; }
         .tak-lengkap { background: #fad2cf; color: #a50e0e; }
-        
-        .btn-download { background-color: #fbbc04; color: #000; border: none; padding: 6px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .btn-download:hover { background-color: #f2a900; }
         
         #tarikh-semasa { font-weight: bold; color: #555; margin-bottom: 20px; }
     </style>
@@ -48,9 +42,6 @@
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycby_Xe3KNOlLsXE92fdjaRvkEz2Rl5dxdAdDYzjOtwJx24cjIC-dgh7q13se6qPSI0479A/exec";
     
-    // Simpan semua data untuk fungsi PDF
-    let senaraiLengkapData = []; 
-
     function paparTarikh() {
         const date = new Date();
         const options = { day: 'numeric', month: 'numeric', year: 'numeric' };
@@ -59,11 +50,9 @@
 
     async function fetchData() {
         try {
-            const response = await fetch(API_URL);
+            // Tambah parameter "?t=" untuk elak isu kotak kuning sebab cache
+            const response = await fetch(API_URL + "?t=" + new Date().getTime(), { cache: "no-store" });
             const data = await response.json();
-            
-            // Gabung data SR dan SM untuk rujukan butang download
-            senaraiLengkapData = [...data.rendah, ...data.menengah];
             
             renderGrid(data.rendah, 'grid-sr');
             renderGrid(data.menengah, 'grid-sm');
@@ -88,23 +77,14 @@
             let cardHtml = `<div class="card"><div class="kumpulan-title">KUMPULAN ${grp}</div>`;
             groups[grp].forEach(s => {
                 let statusClass = "belum";
-                let btnDownload = "";
+                if (s.status === "SELESAI PENDAFTARAN") statusClass = "selesai";
+                else if (s.status === "PENDAFTARAN TIDAK LENGKAP") statusClass = "tak-lengkap";
 
-                if (s.status === "SELESAI PENDAFTARAN") {
-                    statusClass = "selesai";
-                    // Tunjuk butang download hanya kalau status selesai
-                    btnDownload = `<button class="btn-download" onclick="muatTurunPDF('${s.namaSekolah}')">⬇️ PDF</button>`;
-                } else if (s.status === "PENDAFTARAN TIDAK LENGKAP") {
-                    statusClass = "tak-lengkap";
-                }
-
+                // Klik seluruh baris akan buka borang
                 cardHtml += `
-                    <div class="sekolah-row">
+                    <div class="sekolah-row" onclick="bukaBorang('${s.namaSekolah}')">
                         <span style="font-size: 14px; font-weight: 500;">${s.namaSekolah}</span>
-                        <div class="action-group">
-                            ${btnDownload}
-                            <span class="status ${statusClass}" onclick="bukaBorang('${s.namaSekolah}', '${statusClass}')">${s.status}</span>
-                        </div>
+                        <span class="status ${statusClass}">${s.status}</span>
                     </div>`;
             });
             cardHtml += `</div>`;
@@ -112,73 +92,9 @@
         }
     }
 
-    function bukaBorang(sekolah, status) {
-        if (status === "selesai") return; 
+    function bukaBorang(sekolah) {
+        // Tak kira status apa, sentiasa buka pendaftaran.html
         window.location.href = `pendaftaran.html?sekolah=${encodeURIComponent(sekolah)}`;
-    }
-
-    // Fungsi cari data dan jana PDF
-    function muatTurunPDF(namaSekolah) {
-        const sekolah = senaraiLengkapData.find(s => s.namaSekolah === namaSekolah);
-        if (sekolah && sekolah.maklumat) {
-            janaPDF(sekolah.maklumat);
-        } else {
-            alert("Maaf, data pendaftaran belum disegerakkan. Sila refresh muka surat.");
-        }
-    }
-
-    // Fungsi format PDF yang sama (Table Cantik)
-    function janaPDF(data) {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text("PENDAFTARAN FUTSAL PENDIDIKAN KHAS MUAR 2026", 105, 20, { align: "center" });
-        
-        doc.autoTable({
-            startY: 30,
-            head: [['MAKLUMAT SEKOLAH & PEGAWAI']],
-            body: [
-                [`Nama Sekolah : ${data['Nama Sekolah']}`],
-                [`Nama Pengurus : ${data['Nama Pengurus']} (${data['No Tel Pengurus']})`],
-                [`Nama Jurulatih : ${data['Nama Jurulatih']}`]
-            ],
-            theme: 'grid',
-            headStyles: { fillColor: [26, 115, 232], textColor: 255, fontStyle: 'bold', halign: 'center' },
-            styles: { fontSize: 11, cellPadding: 4 }
-        });
-
-        const playerBody = [];
-        for (let i = 1; i <= 7; i++) {
-            playerBody.push([
-                i,
-                data[`Pemain ${i}: Nama`],
-                data[`Pemain ${i}: No MyKad`],
-                data[`Pemain ${i}: No OKU`]
-            ]);
-        }
-
-        doc.autoTable({
-            startY: doc.lastAutoTable.finalY + 10,
-            head: [['Bil', 'Nama Penuh Pemain', 'No. MyKad / MyKid', 'No. Daftar OKU']],
-            body: playerBody,
-            theme: 'grid',
-            headStyles: { fillColor: [217, 48, 37], textColor: 255, fontStyle: 'bold', halign: 'center' },
-            columnStyles: {
-                0: { halign: 'center', cellWidth: 15 },
-                2: { halign: 'center', cellWidth: 45 },
-                3: { halign: 'center', cellWidth: 45 }
-            },
-            styles: { fontSize: 10, cellPadding: 4 }
-        });
-
-        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.text(`Tarikh Cetakan Semula: ${new Date().toLocaleString('ms-MY')}`, 15, pageHeight - 10);
-
-        doc.save(`Salinan_Pendaftaran_${data['Nama Sekolah'].replace(/\s+/g, '_')}.pdf`);
     }
 
     paparTarikh();

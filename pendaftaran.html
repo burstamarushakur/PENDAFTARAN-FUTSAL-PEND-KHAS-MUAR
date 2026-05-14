@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Borang Pendaftaran Futsal Pendidikan Khas Muar</title>
-    <!-- Library untuk Jana PDF -->
+    <!-- Library untuk Jana PDF & Table -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -19,7 +20,7 @@
         input[readonly] { background-color: #e9ecef; color: #555; }
         .player-row { border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; }
         .player-row:last-child { border-bottom: none; }
-        button.submit-btn { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        button.submit-btn { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button.submit-btn:hover { background: #1557b0; }
         #loading { display: none; text-align: center; font-weight: bold; color: #1a73e8; margin-top: 15px; }
     </style>
@@ -57,10 +58,8 @@
 </div>
 
 <script>
-    // URL API Apps Script kau
     const API_URL = "https://script.google.com/macros/s/AKfycby_Xe3KNOlLsXE92fdjaRvkEz2Rl5dxdAdDYzjOtwJx24cjIC-dgh7q13se6qPSI0479A/exec";
 
-    // Tarik nama sekolah dari URL
     const urlParams = new URLSearchParams(window.location.search);
     const sekolah = urlParams.get('sekolah');
     if (sekolah) {
@@ -70,12 +69,11 @@
         window.location.href = "index.html";
     }
 
-    // Auto-generate kotak untuk 7 pemain
     const senaraiPemainDiv = document.getElementById('senarai-pemain');
     for (let i = 1; i <= 7; i++) {
         senaraiPemainDiv.innerHTML += `
             <div class="player-row">
-                <label>Pemain ${i}</label>
+                <label style="color:#1a73e8;">Pemain ${i}</label>
                 <input type="text" name="Pemain ${i}: Nama" placeholder="Nama Penuh" required>
                 <input type="text" name="Pemain ${i}: No MyKad" placeholder="No. MyKad / MyKid (12 digit)" required>
                 <input type="text" name="Pemain ${i}: No OKU" placeholder="No. Pendaftaran OKU" required>
@@ -83,7 +81,6 @@
         `;
     }
 
-    // Fungsi submit borang
     document.getElementById('borang-futsal').addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -93,7 +90,6 @@
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
 
-        // Hantar ke Google Sheet
         fetch(API_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -111,30 +107,62 @@
         });
     });
 
-    // Fungsi Jana PDF
     function janaPDF(data) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         
+        // TAJUK UTAMA
         doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
         doc.text("PENDAFTARAN FUTSAL PENDIDIKAN KHAS MUAR 2026", 105, 20, { align: "center" });
         
-        doc.setFontSize(12);
-        doc.text(`Nama Sekolah: ${data['Nama Sekolah']}`, 20, 40);
-        doc.text(`Pengurus: ${data['Nama Pengurus']} (${data['No Tel Pengurus']})`, 20, 50);
-        doc.text(`Jurulatih: ${data['Nama Jurulatih']}`, 20, 60);
-        
-        doc.setFontSize(14);
-        doc.text("Senarai Pemain:", 20, 80);
-        
-        doc.setFontSize(10);
-        let y = 90;
+        // TABLE 1: MAKLUMAT SEKOLAH & PEGAWAI
+        doc.autoTable({
+            startY: 30,
+            head: [['MAKLUMAT SEKOLAH & PEGAWAI']],
+            body: [
+                [`Nama Sekolah : ${data['Nama Sekolah']}`],
+                [`Nama Pengurus : ${data['Nama Pengurus']} (${data['No Tel Pengurus']})`],
+                [`Nama Jurulatih : ${data['Nama Jurulatih']}`]
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [26, 115, 232], textColor: 255, fontStyle: 'bold', halign: 'center' },
+            styles: { fontSize: 11, cellPadding: 4 }
+        });
+
+        // SIAPKAN DATA UNTUK TABLE PEMAIN
+        const playerBody = [];
         for (let i = 1; i <= 7; i++) {
-            doc.text(`${i}. ${data[`Pemain ${i}: Nama`]}`, 20, y);
-            doc.text(`MyKad: ${data[`Pemain ${i}: No MyKad`]} | OKU: ${data[`Pemain ${i}: No OKU`]}`, 25, y + 5);
-            y += 15;
+            playerBody.push([
+                i,
+                data[`Pemain ${i}: Nama`],
+                data[`Pemain ${i}: No MyKad`],
+                data[`Pemain ${i}: No OKU`]
+            ]);
         }
 
+        // TABLE 2: SENARAI PEMAIN
+        doc.autoTable({
+            startY: doc.lastAutoTable.finalY + 10,
+            head: [['Bil', 'Nama Penuh Pemain', 'No. MyKad / MyKid', 'No. Daftar OKU']],
+            body: playerBody,
+            theme: 'grid',
+            headStyles: { fillColor: [217, 48, 37], textColor: 255, fontStyle: 'bold', halign: 'center' },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 15 },
+                2: { halign: 'center', cellWidth: 45 },
+                3: { halign: 'center', cellWidth: 45 }
+            },
+            styles: { fontSize: 10, cellPadding: 4 }
+        });
+
+        // FOOTER (TARIKH CETAKAN)
+        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "italic");
+        doc.text(`Tarikh Cetakan: ${new Date().toLocaleString('ms-MY')}`, 15, pageHeight - 10);
+
+        // SAVE PDF
         doc.save(`Pendaftaran_${data['Nama Sekolah'].replace(/\s+/g, '_')}.pdf`);
     }
 </script>

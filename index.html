@@ -4,22 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Futsal Pendidikan Khas Muar</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .poster { width: 100%; max-width: 500px; border-radius: 10px; margin-bottom: 20px; }
         h1 { color: #1a73e8; }
         .section-title { background: #1a73e8; color: white; padding: 10px; border-radius: 5px; margin-top: 30px; text-transform: uppercase; font-weight: bold; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 15px; margin-top: 15px; }
         .card { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 10px; text-align: left; }
         .kumpulan-title { font-weight: bold; color: #d93025; border-bottom: 2px solid #eee; margin-bottom: 10px; padding-bottom: 5px; }
-        .sekolah-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f9f9f9; cursor: pointer; transition: 0.2s; }
-        .sekolah-row:hover { background-color: #f1f8ff; }
         
-        .status { font-size: 12px; padding: 6px 10px; border-radius: 5px; font-weight: bold; text-align: center; min-width: 80px;}
-        .belum { background: #feefc3; color: #b06000; }
-        .selesai { background: #ceead6; color: #0d652d; }
-        .tak-lengkap { background: #fad2cf; color: #a50e0e; }
+        .sekolah-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f9f9f9; }
+        .sekolah-name { font-size: 14px; font-weight: 500; flex-grow: 1; margin-right: 10px; }
+        .action-group { display: flex; align-items: center; gap: 6px; }
+        
+        .status { font-size: 11px; padding: 6px 10px; border-radius: 5px; font-weight: bold; text-align: center; border: 1px solid transparent;}
+        .belum { background: #feefc3; color: #b06000; border-color: #fbbc04; cursor: pointer; transition: 0.2s; }
+        .belum:hover { background: #fde293; }
+        .selesai { background: #ceead6; color: #0d652d; border-color: #34a853; cursor: default; } /* Tak boleh klik */
+        
+        .btn-download { background-color: #fbbc04; color: #000; border: 1px solid #e3a000; padding: 6px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.2s;}
+        .btn-download:hover { background-color: #f2a900; }
+        
+        .btn-kemaskini { background-color: #1a73e8; color: #fff; border: 1px solid #1557b0; padding: 6px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.2s;}
+        .btn-kemaskini:hover { background-color: #1557b0; }
         
         #tarikh-semasa { font-weight: bold; color: #555; margin-bottom: 20px; }
     </style>
@@ -29,7 +39,6 @@
 <div class="container">
     <img src="https://i.postimg.cc/85GCpjP8/Chat-GPT-Image-May-7-2026-12-25-40-PM.png" class="poster" alt="Poster Futsal">
     <h1>Pendaftaran Kejohanan Futsal Pendidikan Khas Daerah Muar</h1>
-    
     <div id="tarikh-semasa"></div>
 
     <div class="section-title">Sekolah Rendah (SR)</div>
@@ -41,7 +50,8 @@
 
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycby_Xe3KNOlLsXE92fdjaRvkEz2Rl5dxdAdDYzjOtwJx24cjIC-dgh7q13se6qPSI0479A/exec";
-    
+    let senaraiLengkapData = [];
+
     function paparTarikh() {
         const date = new Date();
         const options = { day: 'numeric', month: 'numeric', year: 'numeric' };
@@ -50,14 +60,12 @@
 
     async function fetchData() {
         try {
-            // Tambah parameter "?t=" untuk elak isu kotak kuning sebab cache
             const response = await fetch(API_URL + "?t=" + new Date().getTime(), { cache: "no-store" });
             const data = await response.json();
-            
+            senaraiLengkapData = [...data.rendah, ...data.menengah];
             renderGrid(data.rendah, 'grid-sr');
             renderGrid(data.menengah, 'grid-sm');
         } catch (e) {
-            console.error("Gagal ambil data", e);
             document.getElementById('grid-sr').innerText = "Ralat memuatkan data.";
             document.getElementById('grid-sm').innerText = "Ralat memuatkan data.";
         }
@@ -77,14 +85,30 @@
             let cardHtml = `<div class="card"><div class="kumpulan-title">KUMPULAN ${grp}</div>`;
             groups[grp].forEach(s => {
                 let statusClass = "belum";
-                if (s.status === "SELESAI PENDAFTARAN") statusClass = "selesai";
-                else if (s.status === "PENDAFTARAN TIDAK LENGKAP") statusClass = "tak-lengkap";
+                let textStatus = s.status || "PENDAFTARAN BELUM DIBUAT";
+                let btnDownload = "";
+                let btnKemaskini = "";
+                let actionBorang = `onclick="bukaBorang('${s.namaSekolah}')" title="Klik untuk daftar"`;
 
-                // Klik seluruh baris akan buka borang
+                if (textStatus === "SELESAI PENDAFTARAN") {
+                    statusClass = "selesai";
+                    textStatus = "PENDAFTARAN SELESAI"; // Tukar teks jadi label
+                    actionBorang = ""; // Matikan fungsi klik pada label status
+                    
+                    // Wujudkan butang Kemaskini & Download
+                    btnKemaskini = `<button class="btn-kemaskini" onclick="bukaBorang('${s.namaSekolah}')">✏️ KEMASKINI</button>`;
+                    btnDownload = `<button class="btn-download" onclick="muatTurunPDF('${s.namaSekolah}')">📥 DOWNLOAD PDF</button>`;
+                }
+
+                // Susunan: [Nama Sekolah] [Download] [Kemaskini] [Status Selesai]
                 cardHtml += `
-                    <div class="sekolah-row" onclick="bukaBorang('${s.namaSekolah}')">
-                        <span style="font-size: 14px; font-weight: 500;">${s.namaSekolah}</span>
-                        <span class="status ${statusClass}">${s.status}</span>
+                    <div class="sekolah-row">
+                        <span class="sekolah-name">${s.namaSekolah}</span>
+                        <div class="action-group">
+                            ${btnDownload}
+                            ${btnKemaskini}
+                            <span class="status ${statusClass}" ${actionBorang}>${textStatus}</span>
+                        </div>
                     </div>`;
             });
             cardHtml += `</div>`;
@@ -93,12 +117,49 @@
     }
 
     function bukaBorang(sekolah) {
-        // Tak kira status apa, sentiasa buka pendaftaran.html
         window.location.href = `pendaftaran.html?sekolah=${encodeURIComponent(sekolah)}`;
     }
 
-    paparTarikh();
-    fetchData();
+    function muatTurunPDF(namaSekolah) {
+        const sekolah = senaraiLengkapData.find(s => s.namaSekolah === namaSekolah);
+        if (sekolah && sekolah.maklumat) {
+            janaPDF(sekolah.maklumat);
+        } else {
+            alert("Data sedang disegerak. Sila Refresh (F5) dan cuba lagi.");
+        }
+    }
+
+    function janaPDF(data) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(16); doc.setFont("helvetica", "bold");
+        doc.text("PENDAFTARAN FUTSAL PENDIDIKAN KHAS MUAR 2026", 105, 20, { align: "center" });
+        
+        doc.autoTable({
+            startY: 30, head: [['MAKLUMAT SEKOLAH & PEGAWAI']],
+            body: [[`Nama Sekolah : ${data['Nama Sekolah']}`], [`Nama Pengurus : ${data['Nama Pengurus']} (${data['No Tel Pengurus']})`], [`Nama Jurulatih : ${data['Nama Jurulatih']}`]],
+            theme: 'grid', headStyles: { fillColor: [26, 115, 232], textColor: 255, fontStyle: 'bold', halign: 'center' }, styles: { fontSize: 11, cellPadding: 4 }
+        });
+
+        const playerBody = [];
+        for (let i = 1; i <= 7; i++) {
+            playerBody.push([i, data[`Pemain ${i}: Nama`] || "", data[`Pemain ${i}: No MyKad`] || "", data[`Pemain ${i}: No OKU`] || ""]);
+        }
+
+        doc.autoTable({
+            startY: doc.lastAutoTable.finalY + 10, head: [['Bil', 'Nama Penuh Pemain', 'No. MyKad / MyKid', 'No. Daftar OKU']], body: playerBody,
+            theme: 'grid', headStyles: { fillColor: [217, 48, 37], textColor: 255, fontStyle: 'bold', halign: 'center' },
+            columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 2: { halign: 'center', cellWidth: 45 }, 3: { halign: 'center', cellWidth: 45 } }, styles: { fontSize: 10, cellPadding: 4 }
+        });
+
+        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+        doc.setFontSize(9); doc.setFont("helvetica", "italic");
+        doc.text(`Tarikh Cetakan Salinan: ${new Date().toLocaleString('ms-MY')}`, 15, pageHeight - 10);
+        doc.save(`Pendaftaran_${data['Nama Sekolah'].replace(/\s+/g, '_')}.pdf`);
+    }
+
+    paparTarikh(); fetchData();
 </script>
 </body>
 </html>

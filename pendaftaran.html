@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Borang Pendaftaran Futsal Pendidikan Khas Muar</title>
+    <title>Borang Pendaftaran Futsal</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
@@ -11,23 +11,18 @@
         .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         h2 { color: #1a73e8; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
         .back-btn { display: inline-block; margin-bottom: 20px; padding: 8px 15px; background: #ddd; color: #333; text-decoration: none; border-radius: 5px; font-weight: bold; }
-        .back-btn:hover { background: #ccc; }
         .form-section { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; }
         .form-section h3 { margin-top: 0; color: #d93025; font-size: 16px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
         input[type="text"], input[type="tel"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         input[readonly] { background-color: #e9ecef; color: #555; cursor: not-allowed; }
         .player-row { border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; }
-        .player-row:last-child { border-bottom: none; }
-        
         button.submit-btn { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
         button.submit-btn:hover { background: #1557b0; }
-        button.download-btn { width: 100%; padding: 15px; background: #fbbc04; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: none; }
-        button.download-btn:hover { background: #f2a900; }
         
         #loading-semak { text-align: center; font-weight: bold; color: #1a73e8; padding: 40px; font-size: 18px; }
-        #borang-futsal { display: none; } /* Sorok form masa tgh loading semak data */
-        .status-badge { display: none; background: #ceead6; color: #0d652d; padding: 5px 10px; border-radius: 5px; font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 20px; }
+        #borang-futsal { display: none; } 
+        .status-badge { display: none; background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 20px; border: 1px solid #ffeeba;}
     </style>
 </head>
 <body>
@@ -36,8 +31,7 @@
     <a href="index.html" class="back-btn">&larr; Kembali ke Dashboard</a>
     <h2>Maklumat Pasukan</h2>
     
-    <div id="status-badge" class="status-badge">✅ MAKLUMAT TELAH DIDAFTARKAN</div>
-    
+    <div id="status-badge" class="status-badge">⚠️ Anda sedang mengemaskini rekod sedia ada. Data baru akan menggantikan (overwrite) data lama.</div>
     <div id="loading-semak">Menyemak Pangkalan Data... Sila tunggu...</div>
 
     <form id="borang-futsal">
@@ -45,13 +39,10 @@
             <h3>Maklumat Sekolah & Pegawai</h3>
             <label>Nama Sekolah</label>
             <input type="text" id="Nama Sekolah" name="Nama Sekolah" readonly required>
-            
             <label>Nama Pengurus</label>
             <input type="text" id="Nama Pengurus" name="Nama Pengurus" required>
-            
             <label>No. Telefon Pengurus</label>
             <input type="tel" id="No Tel Pengurus" name="No Tel Pengurus" required>
-            
             <label>Nama Jurulatih</label>
             <input type="text" id="Nama Jurulatih" name="Nama Jurulatih" required>
         </div>
@@ -62,23 +53,17 @@
         </div>
 
         <button type="submit" class="submit-btn" id="btn-hantar">Hantar Pendaftaran & Jana PDF</button>
-        <button type="button" class="download-btn" id="btn-download">⬇️ Muat Turun Salinan PDF</button>
     </form>
 </div>
 
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycby_Xe3KNOlLsXE92fdjaRvkEz2Rl5dxdAdDYzjOtwJx24cjIC-dgh7q13se6qPSI0479A/exec";
-    let maklumatSediaAda = null;
-
+    
     const urlParams = new URLSearchParams(window.location.search);
     const sekolah = urlParams.get('sekolah');
-    if (sekolah) {
-        document.getElementById('Nama Sekolah').value = sekolah;
-    } else {
-        window.location.href = "index.html";
-    }
+    if (sekolah) { document.getElementById('Nama Sekolah').value = sekolah; } 
+    else { window.location.href = "index.html"; }
 
-    // Bina kotak input untuk 7 pemain
     const senaraiPemainDiv = document.getElementById('senarai-pemain');
     for (let i = 1; i <= 7; i++) {
         senaraiPemainDiv.innerHTML += `
@@ -91,7 +76,6 @@
         `;
     }
 
-    // Semak pangkalan data sebelum papar borang
     fetch(API_URL + "?t=" + new Date().getTime(), { cache: "no-store" })
     .then(res => res.json())
     .then(data => {
@@ -99,8 +83,7 @@
         let sekolahSemasa = semuaSekolah.find(s => s.namaSekolah === sekolah);
 
         if (sekolahSemasa && sekolahSemasa.status === "SELESAI PENDAFTARAN") {
-            // DAH DAFTAR! Penuhkan kotak dengan data lama
-            maklumatSediaAda = sekolahSemasa.maklumat;
+            let maklumatSediaAda = sekolahSemasa.maklumat;
             document.getElementById('Nama Pengurus').value = maklumatSediaAda['Nama Pengurus'];
             document.getElementById('No Tel Pengurus').value = maklumatSediaAda['No Tel Pengurus'];
             document.getElementById('Nama Jurulatih').value = maklumatSediaAda['Nama Jurulatih'];
@@ -111,95 +94,38 @@
                 document.getElementById(`p${i}_oku`).value = maklumatSediaAda[`Pemain ${i}: No OKU`];
             }
 
-            // Kunci semua input supaya cikgu tak terubah
-            document.querySelectorAll('input').forEach(input => input.readOnly = true);
-
-            // Tunjuk label hijau, sorok butang Hantar, tunjuk butang Download
             document.getElementById('status-badge').style.display = 'block';
-            document.getElementById('btn-hantar').style.display = 'none';
-            document.getElementById('btn-download').style.display = 'block';
-            
-            // Set fungsi klik butang download
-            document.getElementById('btn-download').onclick = () => janaPDF(maklumatSediaAda);
+            document.getElementById('btn-hantar').innerText = 'KEMASKINI DATA & JANA PDF';
+            document.getElementById('btn-hantar').style.backgroundColor = '#28a745'; 
         }
-
-        // Hilangkan tulisan loading, paparkan borang
         document.getElementById('loading-semak').style.display = 'none';
         document.getElementById('borang-futsal').style.display = 'block';
-    })
-    .catch(err => {
-        alert("Gagal menyemak data. Sila refresh muka surat.");
-    });
+    }).catch(err => { alert("Gagal menyemak data. Sila refresh muka surat."); });
 
-    // Fungsi hantar borang (kalau belum daftar)
     document.getElementById('borang-futsal').addEventListener('submit', function(e) {
         e.preventDefault();
-        document.getElementById('btn-hantar').innerText = 'Menghantar Data...';
+        document.getElementById('btn-hantar').innerText = 'Memproses Data...';
         document.getElementById('btn-hantar').style.pointerEvents = 'none';
 
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
 
-        fetch(API_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: new URLSearchParams(formData)
-        })
+        fetch(API_URL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams(formData) })
         .then(() => {
             janaPDF(data);
-            alert("Pendaftaran berjaya dihantar!");
+            alert("Data berjaya disimpan!");
             window.location.href = "index.html";
         });
     });
 
-    // Fungsi Table Cecantik Jana PDF
     function janaPDF(data) {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text("PENDAFTARAN FUTSAL PENDIDIKAN KHAS MUAR 2026", 105, 20, { align: "center" });
-        
-        doc.autoTable({
-            startY: 30,
-            head: [['MAKLUMAT SEKOLAH & PEGAWAI']],
-            body: [
-                [`Nama Sekolah : ${data['Nama Sekolah']}`],
-                [`Nama Pengurus : ${data['Nama Pengurus']} (${data['No Tel Pengurus']})`],
-                [`Nama Jurulatih : ${data['Nama Jurulatih']}`]
-            ],
-            theme: 'grid',
-            headStyles: { fillColor: [26, 115, 232], textColor: 255, fontStyle: 'bold', halign: 'center' },
-            styles: { fontSize: 11, cellPadding: 4 }
-        });
-
-        const playerBody = [];
-        for (let i = 1; i <= 7; i++) {
-            playerBody.push([
-                i,
-                data[`Pemain ${i}: Nama`],
-                data[`Pemain ${i}: No MyKad`],
-                data[`Pemain ${i}: No OKU`]
-            ]);
-        }
-
-        doc.autoTable({
-            startY: doc.lastAutoTable.finalY + 10,
-            head: [['Bil', 'Nama Penuh Pemain', 'No. MyKad / MyKid', 'No. Daftar OKU']],
-            body: playerBody,
-            theme: 'grid',
-            headStyles: { fillColor: [217, 48, 37], textColor: 255, fontStyle: 'bold', halign: 'center' },
-            columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 2: { halign: 'center', cellWidth: 45 }, 3: { halign: 'center', cellWidth: 45 } },
-            styles: { fontSize: 10, cellPadding: 4 }
-        });
-
-        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.text(`Tarikh Cetakan Semula: ${new Date().toLocaleString('ms-MY')}`, 15, pageHeight - 10);
-
-        doc.save(`Salinan_Pendaftaran_${data['Nama Sekolah'].replace(/\s+/g, '_')}.pdf`);
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.text("PENDAFTARAN FUTSAL PENDIDIKAN KHAS MUAR 2026", 105, 20, { align: "center" });
+        doc.autoTable({ startY: 30, head: [['MAKLUMAT SEKOLAH & PEGAWAI']], body: [[`Nama Sekolah : ${data['Nama Sekolah']}`], [`Nama Pengurus : ${data['Nama Pengurus']} (${data['No Tel Pengurus']})`], [`Nama Jurulatih : ${data['Nama Jurulatih']}`]], theme: 'grid', headStyles: { fillColor: [26, 115, 232], textColor: 255, fontStyle: 'bold', halign: 'center' }, styles: { fontSize: 11, cellPadding: 4 } });
+        const playerBody = []; for (let i = 1; i <= 7; i++) { playerBody.push([i, data[`Pemain ${i}: Nama`], data[`Pemain ${i}: No MyKad`], data[`Pemain ${i}: No OKU`]]); }
+        doc.autoTable({ startY: doc.lastAutoTable.finalY + 10, head: [['Bil', 'Nama Penuh Pemain', 'No. MyKad / MyKid', 'No. Daftar OKU']], body: playerBody, theme: 'grid', headStyles: { fillColor: [217, 48, 37], textColor: 255, fontStyle: 'bold', halign: 'center' }, columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 2: { halign: 'center', cellWidth: 45 }, 3: { halign: 'center', cellWidth: 45 } }, styles: { fontSize: 10, cellPadding: 4 } });
+        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight(); doc.setFontSize(9); doc.setFont("helvetica", "italic"); doc.text(`Tarikh Cetakan Semula: ${new Date().toLocaleString('ms-MY')}`, 15, pageHeight - 10);
+        doc.save(`Pendaftaran_${data['Nama Sekolah'].replace(/\s+/g, '_')}.pdf`);
     }
 </script>
 

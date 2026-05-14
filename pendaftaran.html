@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borang Pendaftaran Futsal Pendidikan Khas Muar</title>
+    <!-- Library untuk Jana PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h2 { color: #1a73e8; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .back-btn { display: inline-block; margin-bottom: 20px; padding: 8px 15px; background: #ddd; color: #333; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .back-btn:hover { background: #ccc; }
+        .form-section { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; }
+        .form-section h3 { margin-top: 0; color: #d93025; font-size: 16px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        input[type="text"], input[type="tel"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        input[readonly] { background-color: #e9ecef; color: #555; }
+        .player-row { border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; }
+        .player-row:last-child { border-bottom: none; }
+        button.submit-btn { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        button.submit-btn:hover { background: #1557b0; }
+        #loading { display: none; text-align: center; font-weight: bold; color: #1a73e8; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="index.html" class="back-btn">&larr; Kembali ke Dashboard</a>
+    <h2>Borang Pendaftaran Pasukan</h2>
+    
+    <form id="borang-futsal">
+        <div class="form-section">
+            <h3>Maklumat Sekolah & Pegawai</h3>
+            <label>Nama Sekolah</label>
+            <input type="text" id="Nama Sekolah" name="Nama Sekolah" readonly required>
+            
+            <label>Nama Pengurus</label>
+            <input type="text" name="Nama Pengurus" required>
+            
+            <label>No. Telefon Pengurus</label>
+            <input type="tel" name="No Tel Pengurus" required>
+            
+            <label>Nama Jurulatih</label>
+            <input type="text" name="Nama Jurulatih" required>
+        </div>
+
+        <div class="form-section">
+            <h3>Senarai Pemain (7 Orang)</h3>
+            <div id="senarai-pemain"></div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="btn-hantar">Hantar Pendaftaran & Jana PDF</button>
+        <div id="loading">Memproses data... Sila tunggu sebentar.</div>
+    </form>
+</div>
+
+<script>
+    // URL API Apps Script kau
+    const API_URL = "https://script.google.com/macros/s/AKfycby_Xe3KNOlLsXE92fdjaRvkEz2Rl5dxdAdDYzjOtwJx24cjIC-dgh7q13se6qPSI0479A/exec";
+
+    // Tarik nama sekolah dari URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sekolah = urlParams.get('sekolah');
+    if (sekolah) {
+        document.getElementById('Nama Sekolah').value = sekolah;
+    } else {
+        alert("Sila pilih sekolah dari Dashboard terlebih dahulu.");
+        window.location.href = "index.html";
+    }
+
+    // Auto-generate kotak untuk 7 pemain
+    const senaraiPemainDiv = document.getElementById('senarai-pemain');
+    for (let i = 1; i <= 7; i++) {
+        senaraiPemainDiv.innerHTML += `
+            <div class="player-row">
+                <label>Pemain ${i}</label>
+                <input type="text" name="Pemain ${i}: Nama" placeholder="Nama Penuh" required>
+                <input type="text" name="Pemain ${i}: No MyKad" placeholder="No. MyKad / MyKid (12 digit)" required>
+                <input type="text" name="Pemain ${i}: No OKU" placeholder="No. Pendaftaran OKU" required>
+            </div>
+        `;
+    }
+
+    // Fungsi submit borang
+    document.getElementById('borang-futsal').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        document.getElementById('btn-hantar').style.display = 'none';
+        document.getElementById('loading').style.display = 'block';
+
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+
+        // Hantar ke Google Sheet
+        fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: new URLSearchParams(formData)
+        })
+        .then(() => {
+            janaPDF(data);
+            alert("Pendaftaran berjaya dihantar!");
+            window.location.href = "index.html";
+        })
+        .catch(error => {
+            alert("Ralat semasa menghantar. Sila cuba lagi.");
+            document.getElementById('btn-hantar').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+        });
+    });
+
+    // Fungsi Jana PDF
+    function janaPDF(data) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(16);
+        doc.text("PENDAFTARAN FUTSAL PENDIDIKAN KHAS MUAR 2026", 105, 20, { align: "center" });
+        
+        doc.setFontSize(12);
+        doc.text(`Nama Sekolah: ${data['Nama Sekolah']}`, 20, 40);
+        doc.text(`Pengurus: ${data['Nama Pengurus']} (${data['No Tel Pengurus']})`, 20, 50);
+        doc.text(`Jurulatih: ${data['Nama Jurulatih']}`, 20, 60);
+        
+        doc.setFontSize(14);
+        doc.text("Senarai Pemain:", 20, 80);
+        
+        doc.setFontSize(10);
+        let y = 90;
+        for (let i = 1; i <= 7; i++) {
+            doc.text(`${i}. ${data[`Pemain ${i}: Nama`]}`, 20, y);
+            doc.text(`MyKad: ${data[`Pemain ${i}: No MyKad`]} | OKU: ${data[`Pemain ${i}: No OKU`]}`, 25, y + 5);
+            y += 15;
+        }
+
+        doc.save(`Pendaftaran_${data['Nama Sekolah'].replace(/\s+/g, '_')}.pdf`);
+    }
+</script>
+
+</body>
+</html>

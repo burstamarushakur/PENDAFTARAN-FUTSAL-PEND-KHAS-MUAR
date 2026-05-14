@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Futsal Pendidikan Khas Muar</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .poster { width: 100%; max-width: 500px; border-radius: 10px; margin-bottom: 20px; }
+        h1 { color: #1a73e8; }
+        .section-title { background: #1a73e8; color: white; padding: 10px; border-radius: 5px; margin-top: 30px; text-transform: uppercase; font-weight: bold; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
+        .card { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 10px; text-align: left; }
+        .kumpulan-title { font-weight: bold; color: #d93025; border-bottom: 2px solid #eee; margin-bottom: 10px; }
+        .sekolah-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f9f9f9; }
+        .status { font-size: 12px; padding: 5px 10px; border-radius: 5px; font-weight: bold; cursor: pointer; text-align: center;}
+        .belum { background: #feefc3; color: #b06000; }
+        .selesai { background: #ceead6; color: #0d652d; cursor: default; }
+        .tak-lengkap { background: #fad2cf; color: #a50e0e; }
+        #tarikh-semasa { font-weight: bold; color: #555; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img src="https://i.postimg.cc/85GCpjP8/Chat-GPT-Image-May-7-2026-12-25-40-PM.png" class="poster" alt="Poster Futsal">
+    <h1>Pendaftaran Kejohanan Futsal Pendidikan Khas Daerah Muar</h1>
+    
+    <div id="tarikh-semasa"></div>
+
+    <div class="section-title">Sekolah Rendah (SR)</div>
+    <div id="grid-sr" class="grid">Memuatkan data...</div>
+
+    <div class="section-title">Sekolah Menengah (SM)</div>
+    <div id="grid-sm" class="grid">Memuatkan data...</div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycby_Xe3KNOlLsXE92fdjaRvkEz2Rl5dxdAdDYzjOtwJx24cjIC-dgh7q13se6qPSI0479A/exec";
+
+    function paparTarikh() {
+        const date = new Date();
+        const options = { day: 'numeric', month: 'numeric', year: 'numeric' };
+        document.getElementById('tarikh-semasa').innerText = "Tarikh Paparan: " + date.toLocaleDateString('ms-MY', options);
+    }
+
+    async function fetchData() {
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            renderGrid(data.rendah, 'grid-sr');
+            renderGrid(data.menengah, 'grid-sm');
+        } catch (e) {
+            console.error("Gagal ambil data", e);
+            document.getElementById('grid-sr').innerText = "Ralat memuatkan data.";
+            document.getElementById('grid-sm').innerText = "Ralat memuatkan data.";
+        }
+    }
+
+    function renderGrid(list, elementId) {
+        const container = document.getElementById(elementId);
+        container.innerHTML = "";
+        
+        const groups = {};
+        list.forEach(s => {
+            if (!groups[s.kumpulan]) groups[s.kumpulan] = [];
+            groups[s.kumpulan].push(s);
+        });
+
+        for (const grp in groups) {
+            let cardHtml = `<div class="card"><div class="kumpulan-title">KUMPULAN ${grp}</div>`;
+            groups[grp].forEach(s => {
+                let statusClass = "belum";
+                if (s.status === "SELESAI PENDAFTARAN") statusClass = "selesai";
+                if (s.status === "PENDAFTARAN TIDAK LENGKAP") statusClass = "tak-lengkap";
+
+                cardHtml += `
+                    <div class="sekolah-row">
+                        <span>${s.namaSekolah}</span>
+                        <span class="status ${statusClass}" onclick="bukaBorang('${s.namaSekolah}', '${statusClass}')">${s.status}</span>
+                    </div>`;
+            });
+            cardHtml += `</div>`;
+            container.innerHTML += cardHtml;
+        }
+    }
+
+    function bukaBorang(sekolah, status) {
+        if (status === "selesai") return; 
+        window.location.href = `pendaftaran.html?sekolah=${encodeURIComponent(sekolah)}`;
+    }
+
+    paparTarikh();
+    fetchData();
+</script>
+</body>
+</html>

@@ -14,9 +14,10 @@
         .form-section { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; }
         .form-section h3 { margin-top: 0; color: #d93025; font-size: 16px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
-        input[type="text"], input[type="tel"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        input[type="text"], input[type="tel"], input[type="number"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         input[readonly] { background-color: #e9ecef; color: #555; cursor: not-allowed; }
         .player-row { border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         button.submit-btn { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
         button.submit-btn:hover { background: #1557b0; }
         
@@ -64,14 +65,18 @@
     if (sekolah) { document.getElementById('Nama Sekolah').value = sekolah; } 
     else { window.location.href = "index.html"; }
 
+    // Tambah input No Jersi dalam borang
     const senaraiPemainDiv = document.getElementById('senarai-pemain');
     for (let i = 1; i <= 7; i++) {
         senaraiPemainDiv.innerHTML += `
             <div class="player-row">
-                <label style="color:#1a73e8;">Pemain ${i}</label>
+                <label style="color:#1a73e8; font-size: 16px;">Pemain ${i}</label>
                 <input type="text" id="p${i}_nama" name="Pemain ${i}: Nama" placeholder="Nama Penuh" required>
                 <input type="text" id="p${i}_mykad" name="Pemain ${i}: No MyKad" placeholder="No. MyKad / MyKid (12 digit)" required>
-                <input type="text" id="p${i}_oku" name="Pemain ${i}: No OKU" placeholder="No. Pendaftaran OKU" required>
+                <div class="input-grid">
+                    <input type="text" id="p${i}_oku" name="Pemain ${i}: No OKU" placeholder="No. Pendaftaran OKU" required>
+                    <input type="number" id="p${i}_jersi" name="Pemain ${i}: No Jersi" placeholder="No. Jersi" required min="1" max="99">
+                </div>
             </div>
         `;
     }
@@ -89,9 +94,10 @@
             document.getElementById('Nama Jurulatih').value = maklumatSediaAda['Nama Jurulatih'];
 
             for (let i = 1; i <= 7; i++) {
-                document.getElementById(`p${i}_nama`).value = maklumatSediaAda[`Pemain ${i}: Nama`];
-                document.getElementById(`p${i}_mykad`).value = maklumatSediaAda[`Pemain ${i}: No MyKad`];
-                document.getElementById(`p${i}_oku`).value = maklumatSediaAda[`Pemain ${i}: No OKU`];
+                document.getElementById(`p${i}_nama`).value = maklumatSediaAda[`Pemain ${i}: Nama`] || "";
+                document.getElementById(`p${i}_mykad`).value = maklumatSediaAda[`Pemain ${i}: No MyKad`] || "";
+                document.getElementById(`p${i}_oku`).value = maklumatSediaAda[`Pemain ${i}: No OKU`] || "";
+                document.getElementById(`p${i}_jersi`).value = maklumatSediaAda[`Pemain ${i}: No Jersi`] || "";
             }
 
             document.getElementById('status-badge').style.display = 'block';
@@ -118,13 +124,28 @@
         });
     });
 
+    // Kemaskini Jadual PDF
     function janaPDF(data) {
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
         doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.text("PENDAFTARAN FUTSAL PENDIDIKAN KHAS MUAR 2026", 105, 20, { align: "center" });
         doc.autoTable({ startY: 30, head: [['MAKLUMAT SEKOLAH & PEGAWAI']], body: [[`Nama Sekolah : ${data['Nama Sekolah']}`], [`Nama Pengurus : ${data['Nama Pengurus']} (${data['No Tel Pengurus']})`], [`Nama Jurulatih : ${data['Nama Jurulatih']}`]], theme: 'grid', headStyles: { fillColor: [26, 115, 232], textColor: 255, fontStyle: 'bold', halign: 'center' }, styles: { fontSize: 11, cellPadding: 4 } });
-        const playerBody = []; for (let i = 1; i <= 7; i++) { playerBody.push([i, data[`Pemain ${i}: Nama`], data[`Pemain ${i}: No MyKad`], data[`Pemain ${i}: No OKU`]]); }
-        doc.autoTable({ startY: doc.lastAutoTable.finalY + 10, head: [['Bil', 'Nama Penuh Pemain', 'No. MyKad / MyKid', 'No. Daftar OKU']], body: playerBody, theme: 'grid', headStyles: { fillColor: [217, 48, 37], textColor: 255, fontStyle: 'bold', halign: 'center' }, columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 2: { halign: 'center', cellWidth: 45 }, 3: { halign: 'center', cellWidth: 45 } }, styles: { fontSize: 10, cellPadding: 4 } });
-        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight(); doc.setFontSize(9); doc.setFont("helvetica", "italic"); doc.text(`Tarikh Cetakan Semula: ${new Date().toLocaleString('ms-MY')}`, 15, pageHeight - 10);
+        
+        const playerBody = []; 
+        for (let i = 1; i <= 7; i++) { 
+            playerBody.push([i, data[`Pemain ${i}: Nama`], data[`Pemain ${i}: No MyKad`], data[`Pemain ${i}: No OKU`], data[`Pemain ${i}: No Jersi`]]); 
+        }
+        
+        doc.autoTable({ 
+            startY: doc.lastAutoTable.finalY + 10, 
+            head: [['Bil', 'Nama Penuh Pemain', 'No. MyKad / MyKid', 'No. Daftar OKU', 'Jersi']], 
+            body: playerBody, 
+            theme: 'grid', 
+            headStyles: { fillColor: [217, 48, 37], textColor: 255, fontStyle: 'bold', halign: 'center' }, 
+            columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 2: { halign: 'center', cellWidth: 35 }, 3: { halign: 'center', cellWidth: 35 }, 4: { halign: 'center', cellWidth: 15 } }, 
+            styles: { fontSize: 10, cellPadding: 4 } 
+        });
+        
+        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight(); doc.setFontSize(9); doc.setFont("helvetica", "italic"); doc.text(`Tarikh Cetakan: ${new Date().toLocaleString('ms-MY')}`, 15, pageHeight - 10);
         doc.save(`Pendaftaran_${data['Nama Sekolah'].replace(/\s+/g, '_')}.pdf`);
     }
 </script>
